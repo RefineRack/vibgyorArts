@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 
@@ -9,7 +9,15 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   title: "Vibgyor Arts",
-  description: "Hello World Next.js application",
+  description: "Custom printed boxes for short runs. Pick a box, turn it, and open it.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#f4efe6",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
