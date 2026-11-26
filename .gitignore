@@ -42,3 +42,6 @@ next-env.d.ts
 
 # dieline responses cached so a retry is not charged again
 .cache/
+
+# artwork pipeline local storage (scripts and dev)
+.artwork-data/

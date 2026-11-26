@@ -1,0 +1,20 @@
+{
+  "customerName": "Fixture Tea Co.",
+  "brandName": "Leaf & Lantern",
+  "brief": {
+    "styleDescriptor": "minimal luxury, matte, botanical",
+    "palette": [
+      { "name": "Forest green", "hex": "#1F4D3A" },
+      { "name": "Parchment", "hex": "#E9D8A6" }
+    ],
+    "mustIncludeText": [
+      { "copy": "Leaf & Lantern", "role": "brand" },
+      { "copy": "Earl Grey Reserve", "role": "product" },
+      { "copy": "20 pyramid tea bags", "role": "variant", "panelHints": ["left"] }
+    ],
+    "logoAssetIds": [],
+    "referenceAssetIds": [],
+    "finishing": { "coating": "aqueous" },
+    "continuityNotes": "botanical pattern wraps from the front onto the left side"
+  }
+}

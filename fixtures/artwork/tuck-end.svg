@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fixture: Packdora-style tuck-end strip, simplified to two printed panels and
+  one unprinted glue flap. Units are millimetres (1 user unit = 1 mm).
+  Front trim 70 x 120 at (20, 30); left side 30 x 120 at (90, 30); glue flap 15 x 120 at (5, 30).
+  Bleed is 3 mm beyond the cut and the safe zone 3 mm inside it.
+  Strokes are visual aids only; the exporter maps cut/fold to spot layers.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="130mm" height="180mm" viewBox="0 0 130 180"
+     data-sku="VA-FIXTURE-TE-70x30x120" data-name="Tuck-end fixture" data-style="tuck-end"
+     data-finished-width-mm="70" data-finished-depth-mm="30" data-finished-height-mm="120">
+  <g id="panel-glue" data-role="glue_flap" data-unprinted="true" data-neighbour-right="front">
+    <path id="cut-glue" d="M5 30H20V150H5Z" fill="none" stroke="#ff00ff" stroke-width="0.25"/>
+  </g>
+  <g id="panel-front" data-role="front" data-print-facing="outside"
+     data-neighbour-left="glue" data-neighbour-right="left" data-neighbour-right-notes="wraps around the side">
+    <path id="bleed-front" d="M17 27H93V153H17Z" fill="none" stroke="#00aeef" stroke-width="0.1"/>
+    <path id="cut-front" d="M20 30H90V150H20Z" fill="none" stroke="#ff00ff" stroke-width="0.25"/>
+    <rect id="safe-front" x="23" y="33" width="64" height="114" fill="none" stroke="#00a651" stroke-width="0.1"/>
+    <path id="fold-front-glue" d="M20 30V150" fill="none" stroke="#ff00ff" stroke-dasharray="2 1"/>
+    <path id="fold-front-left" d="M90 30V150" fill="none" stroke="#ff00ff" stroke-dasharray="2 1"/>
+  </g>
+  <g id="panel-left" data-role="left" data-print-facing="outside" data-neighbour-left="front">
+    <path id="bleed-left" d="M87 27H123V153H87Z" fill="none" stroke="#00aeef" stroke-width="0.1"/>
+    <path id="cut-left" d="M90 30H120V150H90Z" fill="none" stroke="#ff00ff" stroke-width="0.25"/>
+    <path id="safe-left" d="M93 33H117V147H93Z" fill="none" stroke="#00a651" stroke-width="0.1"/>
+  </g>
+</svg>

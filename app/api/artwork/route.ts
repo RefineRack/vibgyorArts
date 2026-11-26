@@ -1,4 +1,5 @@
 import type { DielinePanel } from "@/lib/dieline-art";
+import { interactionErrorMessage, interactionImage } from "@/lib/gemini-interactions";
 
 export const maxDuration = 60;
 
@@ -48,34 +49,6 @@ function splitDataUrl(value: string) {
   const match = value.match(/^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!match) return null;
   return { mime: match[1], data: match[2] };
-}
-
-function imageBlock(value: unknown) {
-  if (!value || typeof value !== "object") return null;
-  const block = value as { type?: unknown; data?: unknown; mime_type?: unknown };
-  if (block.type !== "image" || typeof block.data !== "string" || block.data.length === 0) return null;
-  const mime = typeof block.mime_type === "string" ? block.mime_type : "image/jpeg";
-  return { data: block.data, mime };
-}
-
-function generatedImage(payload: unknown) {
-  if (!payload || typeof payload !== "object") return null;
-  const steps = (payload as { steps?: unknown }).steps;
-  if (!Array.isArray(steps)) return null;
-  let found: { data: string; mime: string } | null = null;
-  for (const step of steps) {
-    if (!step || typeof step !== "object") continue;
-    const record = step as { content?: unknown; summary?: unknown };
-    const blocks = [
-      ...(Array.isArray(record.content) ? record.content : []),
-      ...(Array.isArray(record.summary) ? record.summary : []),
-    ];
-    for (const block of blocks) {
-      const image = imageBlock(block);
-      if (image) found = image;
-    }
-  }
-  return found;
 }
 
 export async function POST(request: Request) {
@@ -133,21 +106,12 @@ export async function POST(request: Request) {
   }
 
   const payload = await response.json().catch(() => null);
-  const image = generatedImage(payload);
+  const image = interactionImage(payload);
   if (response.ok && image) {
     return Response.json({ image: `data:${image.mime};base64,${image.data}` });
   }
 
-  const geminiMessage =
-    payload &&
-    typeof payload === "object" &&
-    "error" in payload &&
-    payload.error &&
-    typeof payload.error === "object" &&
-    "message" in payload.error &&
-    typeof payload.error.message === "string"
-      ? payload.error.message.slice(0, 240)
-      : "";
+  const geminiMessage = interactionErrorMessage(payload);
   console.error("[artwork]", { status: response.status, model: MODEL, message: geminiMessage });
   const message =
     response.status === 401 || response.status === 403
