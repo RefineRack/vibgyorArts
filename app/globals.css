@@ -30,6 +30,39 @@ body {
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
 }
 
+.summer-face {
+  position: absolute;
+  z-index: 5;
+  top: max(12px, env(safe-area-inset-top));
+  right: 16px;
+  width: 48px;
+  height: 48px;
+}
+
+.summer-eye {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: summer-blink 5.2s infinite;
+}
+
+.summer-eye-late {
+  animation-delay: 0.08s;
+}
+
+.summer-mouth {
+  transform-origin: 40px 56px;
+  transform-box: fill-box;
+}
+
+.summer-face.is-talking .summer-mouth {
+  transform: scaleY(1.35);
+}
+
+@keyframes summer-blink {
+  0%, 46%, 52%, 100% { transform: scaleY(1); }
+  49% { transform: scaleY(0.12); }
+}
+
 button,
 img {
   font: inherit;
@@ -44,6 +77,7 @@ button {
 }
 
 .va-device {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -58,7 +92,7 @@ button {
   align-items: center;
   gap: 12px;
   min-height: 72px;
-  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  padding: max(12px, env(safe-area-inset-top)) 72px 12px 16px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -88,6 +122,16 @@ button {
 
 .va-title {
   min-width: 0;
+  flex: 1;
+}
+
+.va-reference {
+  display: grid;
+  gap: 12px;
+}
+
+.va-reference .va-art {
+  margin: 0;
 }
 
 .va-brand {
