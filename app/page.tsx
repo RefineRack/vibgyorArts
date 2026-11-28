@@ -1,5 +1,5 @@
-import { Studio } from "./components/studio/studio";
+import { BoxesView } from "@/app/components/boxes/boxes-view";
 
 export default function Home() {
-  return <Studio />;
+  return <BoxesView />;
 }

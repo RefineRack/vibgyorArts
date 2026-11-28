@@ -70,7 +70,4 @@ export function toBoxModel(item: UpstreamModel): BoxModel | null {
   };
 }
 
-export function formatSize(box: BoxModel) {
-  if (box.length <= 0 || box.width <= 0 || box.height <= 0) return null;
-  return `${box.length} × ${box.width} × ${box.height} mm`;
-}
+export { formatSize, formatMm, type BoxDimensions } from "@/lib/box-dimensions";

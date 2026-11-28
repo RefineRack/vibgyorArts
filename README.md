@@ -1,5 +1,12 @@
 > **Packdora artwork pipeline:** see [docs/artwork-pipeline.md](docs/artwork-pipeline.md).
 
+## Boxes
+
+Open `/boxes` to see **Your boxes** (saved dielines from Firestore) and a link into the Pacdora catalogue. Picking a box opens the studio at `/studio`. The site uses a warm paper palette and a system font stack; see `app/globals.css` for the design tokens.
+
+The Packdora artwork pipeline lives alongside this: see [docs/artwork-pipeline.md](docs/artwork-pipeline.md).
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

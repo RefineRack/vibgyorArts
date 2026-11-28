@@ -20,3 +20,4 @@ export * from "@/lib/artwork/generate/runner";
 export * from "@/lib/artwork/brief";
 export * from "@/lib/artwork/assets";
 export * from "@/lib/artwork/jobs";
+export * from "@/lib/artwork/prepare-scene";
