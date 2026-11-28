@@ -6,7 +6,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /savedBoxes/{boxId} {
       allow read: if true;
-      allow create: if isSavedBox(request.resource.data);
+      allow create: if isSavedBox(request.resource.data) || isSavedBoxWithArt(request.resource.data);
       allow update, delete: if false;
     }
 
@@ -47,4 +47,36 @@ function isSavedBox(data) {
 
 function inRange(value, max) {
   return value is number && value > 0 && value <= max;
+}
+
+function isSavedBoxWithArt(data) {
+  return data.keys().hasOnly([
+      'name', 'modelId', 'image', 'length', 'width', 'height', 'thickness', 'scene', 'createdAt', 'artwork'
+    ])
+    && data.name is string
+    && data.name.size() > 0
+    && data.name.size() <= 80
+    && data.modelId is string
+    && data.modelId.matches('^[0-9]{6}$')
+    && data.image is string
+    && data.image.size() > 0
+    && data.image.size() <= 2048
+    && inRange(data.length, 5000)
+    && inRange(data.width, 5000)
+    && inRange(data.height, 5000)
+    && inRange(data.thickness, 20)
+    && data.scene is map
+    && data.scene.schemaVersion == 1
+    && data.scene.unit == 'mm'
+    && data.scene.modelId == data.modelId
+    && data.scene.faces is list
+    && data.scene.faces.size() > 0
+    && data.scene.faces.size() <= 80
+    && data.scene.hinges is list
+    && data.scene.stages is list
+    && data.scene.stages.size() > 0
+    && data.createdAt == request.time
+    && data.artwork is string
+    && data.artwork.size() > 0
+    && data.artwork.size() <= 900000;
 }

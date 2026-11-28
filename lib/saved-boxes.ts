@@ -20,6 +20,7 @@ export type SavedBox = {
   height: number;
   thickness: number;
   scene: DielineScene;
+  artwork: string;
 };
 
 export type SavedBoxDraft = Omit<SavedBox, "id">;
@@ -115,6 +116,7 @@ function savedBox(id: string, data: Record<string, unknown>): SavedBox | null {
     height,
     thickness,
     scene,
+    artwork: typeof data.artwork === "string" && data.artwork.startsWith("data:image/") ? data.artwork : "",
   };
 }
 
@@ -179,10 +181,10 @@ export function loadSavedBoxes() {
   });
 }
 
-export async function createSavedBox(draft: SavedBoxDraft) {
+async function writeSavedBox(draft: SavedBoxDraft, includeArtwork: boolean) {
   const db = database();
   if (!db) throw new Error("Firebase is not configured");
-  const write = addDoc(collection(db, COLLECTION), {
+  const fields: Record<string, unknown> = {
     name: draft.name,
     modelId: draft.modelId,
     image: draft.image,
@@ -192,13 +194,20 @@ export async function createSavedBox(draft: SavedBoxDraft) {
     thickness: draft.thickness,
     scene: sceneForStore(draft.scene),
     createdAt: serverTimestamp(),
-  });
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(
-      () => reject(new Error(FIRESTORE_SETUP)),
-      FIREBASE_WAIT_MS,
-    );
-  });
-  const ref = await Promise.race([write, timeout]);
+  };
+  if (includeArtwork) fields.artwork = draft.artwork;
+  const ref = await addDoc(collection(db, COLLECTION), fields);
   return ref.id;
+}
+
+export async function createSavedBox(draft: SavedBoxDraft) {
+  const withArtwork = draft.artwork.startsWith("data:image/") && draft.artwork.length <= 900000;
+  if (!withArtwork) return writeSavedBox(draft, false);
+  try {
+    return await writeSavedBox(draft, true);
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
+    if (!code.includes("permission-denied")) throw error;
+    return writeSavedBox(draft, false);
+  }
 }

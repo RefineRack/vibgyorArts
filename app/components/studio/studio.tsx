@@ -1,16 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { dielinePanels, dielineSvg, drawDielineGuide, shrinkProductPhoto } from "@/lib/dieline-art";
 import { isDielineScene, type DielineScene } from "@/lib/dieline-types";
 import { formatSize, type BoxModel, type BoxPage } from "@/lib/pacdora-models";
 import { createSavedBox, firebaseMessage, loadSavedBoxes, type SavedBox } from "@/lib/saved-boxes";
 import { BoxScene } from "./box-scene";
 import { Slider } from "./slider";
+import { Summer } from "./summer";
 
 const ZOOM_LIMIT = 12;
 
-type View = "list" | "name" | "stage";
+type View = "list" | "reference" | "stage";
 
 type OpenBox = {
   name: string;
@@ -147,16 +148,21 @@ export function Studio() {
 
   function chooseBox(box: BoxModel) {
     setNaming(box);
-    setDraftName("");
+    setDraftName(box.name);
     setSaveError("");
     setSaving(false);
-    setView("name");
+    setScene(null);
+    setOpened(null);
+    clearArtwork();
+    setView("reference");
   }
 
   function openSaved(box: SavedBox) {
     setZoom(0);
     setFold(1);
-    clearArtwork();
+    setArtwork(box.artwork || null);
+    setArtStatus("idle");
+    setArtError("");
     setScene(box.scene);
     setSceneStatus("ready");
     setOpened({
@@ -168,55 +174,88 @@ export function Studio() {
     setView("stage");
   }
 
-  async function saveNamedBox(event: FormEvent) {
-    event.preventDefault();
-    if (!naming || savingRef.current) return;
-    const name = draftName.trim();
-    if (!name) return;
-
+  async function openWithReference(file: File | undefined) {
+    const selected = naming;
+    if (!file || !selected || savingRef.current) return;
+    const name = draftName.trim() || selected.name;
     savingRef.current = true;
     setSaving(true);
     setSaveError("");
+    setArtError("");
+    setScene(null);
+    setArtwork(null);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 45000);
+    const timeout = window.setTimeout(() => controller.abort(), 60000);
+    let openedStage = false;
     try {
+      const product = await shrinkProductPhoto(file);
       const params = new URLSearchParams({
-        modelId: naming.modelId,
-        length: String(naming.length),
-        width: String(naming.width),
-        height: String(naming.height),
-        thickness: String(naming.thickness),
+        modelId: selected.modelId,
+        length: String(selected.length),
+        width: String(selected.width),
+        height: String(selected.height),
+        thickness: String(selected.thickness),
       });
-      const response = await fetch(`/api/pacdora/scene?${params}`, { signal: controller.signal });
-      const body = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(body.error || "This box did not open.");
-      if (!isDielineScene(body)) throw new Error("This box did not open.");
-
-      await createSavedBox({
-        name,
-        modelId: naming.modelId,
-        image: naming.image,
-        length: naming.length,
-        width: naming.width,
-        height: naming.height,
-        thickness: naming.thickness,
-        scene: body,
-      });
+      const sceneResponse = await fetch(`/api/pacdora/scene?${params}`, { signal: controller.signal });
+      const sceneBody = (await sceneResponse.json()) as { error?: string };
+      if (!sceneResponse.ok) throw new Error(sceneBody.error || "This box did not open.");
+      if (!isDielineScene(sceneBody)) throw new Error("This box did not open.");
 
       setZoom(0);
       setFold(1);
-      clearArtwork();
-      setScene(body);
+      setArtwork(null);
+      setScene(sceneBody);
       setSceneStatus("ready");
       setOpened({
         name,
-        length: naming.length,
-        width: naming.width,
-        height: naming.height,
+        length: selected.length,
+        width: selected.width,
+        height: selected.height,
       });
       setView("stage");
+      openedStage = true;
+      setArtStatus("working");
+
+      const guide = drawDielineGuide(sceneBody);
+      if (!guide) throw new Error("This box has no panels to print.");
+      const artResponse = await fetch("/api/artwork", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guide,
+          product,
+          svg: dielineSvg(sceneBody),
+          panels: dielinePanels(sceneBody),
+        }),
+        signal: controller.signal,
+      });
+      const artBody = (await artResponse.json()) as { image?: string; error?: string };
+      if (!artResponse.ok || !artBody.image) throw new Error(artBody.error || "The wrap was not created.");
+      if (sceneBody.modelId !== selected.modelId) {
+        throw new Error("This box did not open.");
+      }
+      setArtwork(artBody.image);
+      setArtStatus("idle");
+      await createSavedBox({
+        name,
+        modelId: selected.modelId,
+        image: selected.image,
+        length: selected.length,
+        width: selected.width,
+        height: selected.height,
+        thickness: selected.thickness,
+        scene: sceneBody,
+        artwork: artBody.image,
+      });
+      setSavedAttempt((attempt) => attempt + 1);
     } catch (error) {
-      setSaveError(firebaseMessage(error));
+      const message = error instanceof Error && error.name !== "AbortError" ? error.message : "This box did not open.";
+      if (openedStage) {
+        setArtError(message);
+        setArtStatus("error");
+      } else {
+        setSaveError(message);
+      }
     } finally {
       window.clearTimeout(timeout);
       savingRef.current = false;
@@ -257,22 +296,22 @@ export function Studio() {
     opened && opened.length > 0 && opened.width > 0 && opened.height > 0
       ? `${opened.length} × ${opened.width} × ${opened.height} mm`
       : null;
-  const title = view === "stage" ? opened?.name ?? "Box" : view === "name" ? "Name this box" : "Boxes";
+  const title = view === "stage" ? opened?.name ?? "Box" : view === "reference" ? "Reference" : "Boxes";
 
   return (
     <>
       <div className="va-rotate">Turn the phone upright. This studio is portrait.</div>
       <div className="va-device">
+        <Summer talking={saving || artStatus === "working"} />
         <header className="va-top">
-          {view === "list" ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="va-logo" src="/logo.jpeg" alt="" width={40} height={40} />
-          ) : (
-            <button className="va-back" type="button" onClick={backToList}>
-              Boxes
-            </button>
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="va-logo" src="/logo.jpeg" alt="" width={40} height={40} />
           <div className="va-title">
+            {view === "list" ? null : (
+              <button className="va-back" type="button" onClick={backToList}>
+                Boxes
+              </button>
+            )}
             <p className="va-brand">Vibgyor Arts</p>
             <h1>{title}</h1>
           </div>
@@ -324,7 +363,7 @@ export function Studio() {
 
             <h2 className="va-section">Pacdora</h2>
             <p className="va-lead">
-              Pick a box, name it, and save the dieline.
+              Pick a box, add a reference image, and open it in 3D.
               {total > 0 ? ` ${total.toLocaleString()} styles.` : ""}
             </p>
             {listStatus === "error" && boxes.length === 0 ? (
@@ -367,29 +406,36 @@ export function Studio() {
             <div ref={sentinelRef} className="va-sentinel" />
           </section>
 
-          <section className={view === "name" ? "va-name" : "va-name is-off"}>
+          <section className={view === "reference" ? "va-name" : "va-name is-off"}>
             {naming ? (
-              <form onSubmit={(event) => void saveNamedBox(event)}>
+              <div className="va-reference">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={naming.image} alt="" />
-                <p className="va-lead">
-                  Choose a name. Saving stores the vector dieline with that name, then opens the saved box.
-                </p>
+                <p className="va-lead">Name this box, then add a reference image. The print is wrapped on this box and saved with it.</p>
                 <label htmlFor="box-name">Box name</label>
                 <input
                   id="box-name"
                   value={draftName}
                   maxLength={80}
                   autoComplete="off"
-                  autoFocus
                   disabled={saving}
                   onChange={(event) => setDraftName(event.target.value)}
                 />
+                <label className="va-art">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={saving}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      void openWithReference(file);
+                    }}
+                  />
+                  <span>{saving ? "Opening…" : "Add a reference image"}</span>
+                </label>
                 {saveError ? <p className="va-form-error">{saveError}</p> : null}
-                <button type="submit" disabled={saving || draftName.trim().length === 0}>
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              </form>
+              </div>
             ) : null}
           </section>
 
@@ -424,8 +470,15 @@ export function Studio() {
               </div>
             </div>
             <div className="va-view">
-              {scene ? (
-                <BoxScene scene={scene} fold={fold} zoom={zoom} artwork={artwork} onZoom={changeZoom} />
+              {view === "stage" && scene ? (
+                <BoxScene
+                  key={scene.modelId}
+                  scene={scene}
+                  fold={fold}
+                  zoom={zoom}
+                  artwork={artwork}
+                  onZoom={changeZoom}
+                />
               ) : null}
               {sceneStatus === "loading" ? (
                 <div className="va-scene-status">
@@ -450,7 +503,7 @@ export function Studio() {
                     void onProductPhoto(file);
                   }}
                 />
-                <span>{artStatus === "working" ? "Designing the wrap…" : "Add a product photo"}</span>
+                <span>{artStatus === "working" ? "Designing the wrap…" : "Change the reference"}</span>
               </label>
               {artError ? <p className="va-form-error">{artError}</p> : null}
               <p className="va-hint">Drag to turn the box</p>
